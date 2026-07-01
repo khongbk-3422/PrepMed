@@ -1,0 +1,18 @@
+# Ignore local virtual environment wrappers
+.venv/
+venv/
+env/
+
+# Ignore Python compiler caches
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore local tool metadata caches
+.ruff_cache/
+.pytest_cache/
+.git/
+
+# Ignore system configuration profiles
+.env

@@ -1,0 +1,58 @@
+services:
+  # Database Service
+  postgres-db:
+    image: pgvector/pgvector:pg16
+    container_name: prepmed-postgres
+    restart: unless-stopped
+    environment:
+      # 👇 Automatically reads variables populated by the backend env file
+      POSTGRES_USER: ${DB_USER:-prepmed}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-predmed12345}
+      POSTGRES_DB: ${DB_NAME:-prepmed}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-prepmed} -d ${DB_NAME:-prepmed}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend Service
+  backend:
+    build:
+      context: ./backend        
+      dockerfile: Dockerfile     
+    container_name: prepmed-backend-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/src:/app/src
+    # 👇 TELLS DOCKER TO INJECT THE PRIVATE ENVIRONMENT CONSTANTS
+    env_file:
+      - ./backend/.env
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile
+    container_name: prepmed-frontend-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+    # 👇 INJECTS FRONTEND CONSTANTS SEPARATELY
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
