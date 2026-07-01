@@ -1,0 +1,13 @@
+# Ignore dependency caches
+.venv/
+venv/
+env/
+.uv/
+
+# Ignore Python runtime artifacts
+**/__pycache__/
+*.pyc
+
+# Ignore tool configurations
+.ruff_cache/
+.git/

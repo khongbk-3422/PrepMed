@@ -1,0 +1,30 @@
+# --- System Cache & Local Storage ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+Thumbs.db
+
+# --- Package Managers & Virtual Environments ---
+.venv/
+venv/
+ENV/
+env/
+.uv/
+
+# --- Local Databases & Volumes ---
+postgres_data/
+*.db
+*.sqlite3
+
+# --- AI Models Cache ---
+.ollama/
+models/
+
+# --- Environment Configurations & Keys ---
+.env
+.env.*
+!*.txt
