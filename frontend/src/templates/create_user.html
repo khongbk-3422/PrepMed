@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="create-page">
+    <div class="panel form-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Add User</h2>
+                <p class="muted-text">Create a doctor or nurse account for note review.</p>
+            </div>
+
+            <a href="/" class="btn btn-light">Back</a>
+        </div>
+
+        <form id="userForm" class="create-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input id="username" type="text" placeholder="dr_ahmad" required>
+            </div>
+
+            <div class="form-group">
+                <label for="fullName">Full Name</label>
+                <input id="fullName" type="text" placeholder="Dr. Ahmad Razak" required>
+            </div>
+
+            <div class="form-group">
+                <label for="role">Role</label>
+                <select id="role" required>
+                    <option value="doctor">Doctor</option>
+                    <option value="nurse">Nurse</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Create User</button>
+                <a href="/" class="btn btn-light">Cancel</a>
+            </div>
+        </form>
+
+        <p id="createStatus" class="form-status"></p>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="/static/js/create.js"></script>
+{% endblock %}

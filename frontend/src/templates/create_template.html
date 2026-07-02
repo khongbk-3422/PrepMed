@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="create-page">
+    <div class="panel form-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Add Template</h2>
+                <p class="muted-text">Create the clinical note structure the AI should extract.</p>
+            </div>
+
+            <a href="/" class="btn btn-light">Back</a>
+        </div>
+
+        <form id="templateForm" class="create-form">
+            <div class="form-group">
+                <label for="templateTitle">Template Title</label>
+                <input
+                    id="templateTitle"
+                    type="text"
+                    placeholder="Dengue Consultation"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="requiredItems">Required Items</label>
+                <input
+                    id="requiredItems"
+                    type="text"
+                    placeholder="symptoms, duration, temperature, diagnosis"
+                    required
+                >
+                <small class="hint-text">Separate each item with a comma.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="defaultDescription">Default Description</label>
+                <input id="defaultDescription" type="text" value="-">
+            </div>
+
+            <div class="form-group">
+                <label for="defaultMedicine">Default Medicine</label>
+                <input id="defaultMedicine" type="text" value="-">
+            </div>
+
+            <div class="form-group">
+                <label for="templateUserSelect">Created By</label>
+                <select id="templateUserSelect" required>
+                    <option value="">Loading users...</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Create Template</button>
+                <a href="/" class="btn btn-light">Cancel</a>
+            </div>
+        </form>
+
+        <p id="createStatus" class="form-status"></p>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="/static/js/create.js"></script>
+{% endblock %}

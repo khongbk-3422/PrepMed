@@ -1,0 +1,31 @@
+<aside class="sidebar">
+    <section class="sidebar-section">
+        <h2 class="sidebar-title">Consultation History</h2>
+
+        <div id="sessionsList" class="history-list">
+            {% if sessions %}
+                {% for session in sessions %}
+                    <div class="history-item">
+                        <div class="history-date">
+                            {{ session.created_at[:10] if session.created_at else "No date" }}
+                        </div>
+
+                        <span class="status-badge status-{{ session.status | lower | replace(' ', '-') }}">
+                            {{ session.status }}
+                        </span>
+
+                        <button
+                            type="button"
+                            class="btn btn-light history-open-btn"
+                            data-session='{{ session | tojson }}'
+                        >
+                            Open
+                        </button>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="muted-text">No consultation history yet.</p>
+            {% endif %}
+        </div>
+    </section>
+</aside>

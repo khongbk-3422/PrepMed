@@ -1,0 +1,26 @@
+<header class="topbar">
+    <div class="brand">
+        <a href="/" class="brand-link">PrepMed</a>
+    </div>
+
+    <nav class="topbar-actions">
+        <a href="/users/new" class="btn btn-light">Add User</a>
+        <a href="/templates/new" class="btn btn-light">Add Template</a>
+
+        <div class="topbar-select">
+            <label for="userSelect" class="sr-only">Current User</label>
+
+            <select id="userSelect" name="userSelect">
+                {% if users %}
+                    {% for user in users %}
+                        <option value="{{ user.id }}">
+                            {{ user.full_name }} ({{ user.role }})
+                        </option>
+                    {% endfor %}
+                {% else %}
+                    <option value="">No users found</option>
+                {% endif %}
+            </select>
+        </div>
+    </nav>
+</header>

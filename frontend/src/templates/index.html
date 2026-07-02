@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="app-layout">
+    {% include "partials/sidebar.html" %}
+
+    <section class="workspace">
+        <!-- Top control panel -->
+        <section class="panel control-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Consultation</h2>
+                    <p class="muted-text">Select model and template before recording.</p>
+                </div>
+
+                <button id="saveReviewBtn" type="button" class="btn btn-primary">
+                    Save Note
+                </button>
+            </div>
+
+            <div class="form-grid three-columns">
+                <div class="form-group">
+                    <label for="modelSelect">Model</label>
+                    <select id="modelSelect">
+                        {% if ollama_models or gemini_models %}
+                            {% for model in ollama_models %}
+                                <option value="{{ model }}">Ollama - {{ model }}</option>
+                            {% endfor %}
+
+                            {% for model in gemini_models %}
+                                <option value="{{ model }}">Gemini - {{ model }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="">No models found</option>
+                        {% endif %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="templateSelect">Template</label>
+                    <select id="templateSelect">
+                        {% if templates %}
+                            {% for template in templates %}
+                                <option
+                                    value="{{ template.id }}"
+                                    data-required-items='{{ template.required_items | tojson }}'
+                                    data-default-description="{{ template.default_description or '-' }}"
+                                    data-default-medicine="{{ template.default_medicine or '-' }}"
+                                >
+                                    {{ template.title }}
+                                </option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="">No templates found</option>
+                        {% endif %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+
+                    <div class="status-options">
+                        <label class="status-option">
+                            <input
+                                type="radio"
+                                name="consultationStatus"
+                                value="Draft"
+                                checked
+                            >
+                            <span class="status-badge status-draft">Draft</span>
+                        </label>
+
+                        <label class="status-option">
+                            <input
+                                type="radio"
+                                name="consultationStatus"
+                                value="Pending Review"
+                            >
+                            <span class="status-badge status-pending">Pending Review</span>
+                        </label>
+
+                        <label class="status-option">
+                            <input
+                                type="radio"
+                                name="consultationStatus"
+                                value="Confirmed"
+                            >
+                            <span class="status-badge status-confirmed">Completed</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden fields used by app.js/backend -->
+            <input type="hidden" id="consultationStatus" value="Draft">
+            <input type="checkbox" id="markConfirmed" hidden>
+            <input type="hidden" id="currentConsultationId">
+            <input type="hidden" id="patientSelect" value="101">
+        </section>
+
+        <!-- Recording buttons -->
+        <section class="panel recording-panel">
+            <div class="recording-actions">
+                <button id="startBtn" type="button" class="btn btn-primary">
+                    Start
+                </button>
+
+                <button id="pauseStopBtn" type="button" class="btn btn-secondary">
+                    Pause / Stop
+                </button>
+
+                <button id="resetBtn" type="button" class="btn btn-danger">
+                    Reset
+                </button>
+
+                <button id="processBtn" type="button" class="btn btn-primary">
+                    Process
+                </button>
+            </div>
+
+            <span id="recordStatus" hidden></span>
+        </section>
+
+        <!-- Transcript + note area -->
+        <div class="split-panel">
+            <section class="panel transcript-panel">
+                <div class="panel-header">
+                    <h2>Live Transcript</h2>
+                </div>
+
+                <textarea
+                    id="transcriptText"
+                    class="large-textarea"
+                    placeholder="Press Start or type transcript here..."
+                ></textarea>
+            </section>
+
+            <section class="panel note-panel">
+                <div class="panel-header">
+                    <h2>Clinical Note</h2>
+                </div>
+
+                <label>Template Fields</label>
+
+                <div id="structuredFields" class="structured-fields"></div>
+
+                <textarea id="structuredData" hidden></textarea>
+
+                <label for="extractedDescription">Description</label>
+                <textarea
+                    id="extractedDescription"
+                    class="medium-textarea editable-note"
+                    placeholder="Clinical description..."
+                ></textarea>
+
+                <label for="extractedMedicine">Medicine</label>
+                <textarea
+                    id="extractedMedicine"
+                    class="medium-textarea editable-note"
+                    placeholder="Medicine..."
+                ></textarea>
+
+                <textarea id="resultTranscript" hidden readonly></textarea>
+            </section>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="/static/js/app.js"></script>
+{% endblock %}

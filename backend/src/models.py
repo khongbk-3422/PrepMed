@@ -31,29 +31,21 @@ class MedicalTemplate(SQLModel, table=True):
 
 class Consultation(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    patient_id: int = Field(foreign_key="patient.id")
+
+    patient_id: int
+
     template_id: Optional[int] = None
     status: ConsultationStatus = Field(default=ConsultationStatus.DRAFT)
-    
+
     recorded_by_user_id: int
     reviewed_by_user_id: Optional[int] = None
-    
+
     raw_transcript: Optional[str] = None
-    extracted_structured_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(SA_JSON))
+    extracted_structured_data: Dict[str, Any] = Field(default={}, sa_column=Column(SIGN_JSON))
     extracted_description: str = "-"
     extracted_medicine: str = "-"
-    
+
     embedding: Optional[List[float]] = Field(default=None, sa_column=Column(Vector(768)))
-    
+
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
-
-#add patient model
-class Patient(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    full_name: str = Field(index=True)
-    age: Optional[int] = None
-    gender: Optional[str] = None
-    current_sickness: Optional[str] = None
-    current_medications: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
