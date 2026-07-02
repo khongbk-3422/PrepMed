@@ -3,6 +3,8 @@ from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 from datetime import datetime
+from pydantic import BaseModel
+from google.genai.errors import APIError
 import numpy as np
 from src.database import get_session, init_db
 from src.models import Consultation, ConsultationStatus, MedicalTemplate, User
@@ -20,6 +22,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class ProcessSessionRequest(BaseModel):
+    patient_id: int = 101
+    user_id: int = 1
+    template_id: int = 1
+    model_name: str = "llama3.1"
+    raw_text: str = ""
 
 class SafeJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -70,7 +79,6 @@ def list_all_consultation_sessions(db: Session = Depends(get_session)):
         
     return clean_records
 
-
 # --- GENERAL USER & TEMPLATE PATH ROUTERS ---
 @app.get("/api/users", response_model=list[User])
 def list_system_users(db: Session = Depends(get_session)):
@@ -85,63 +93,62 @@ def list_available_templates(db: Session = Depends(get_session)):
 # --- MEDICAL RECORDING VOICE PROCESSING API LOOP ---
 @app.post("/api/sessions/process")
 async def register_and_process_voice_session(
-    patient_id: int = 101,
-    user_id: int = 1,
-    template_id: int = 1,
-    model_name: str = "llama3.1",  # 👈 Added dynamic model parameter from frontend select picker
+    payload: ProcessSessionRequest,
     db: Session = Depends(get_session)
 ):
-    """Processes speech transcript directly using the user's chosen text model without background embedding overheads."""
-    template = db.get(MedicalTemplate, template_id)
+    template = db.get(MedicalTemplate, payload.template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Selected layout template missing")
 
-    # Simulated speech-to-text text conversation string footprint layer
-    simulated_transcript = "Patient has a persistent chest cough with a mild fever for 3 days."
+    raw_text = payload.raw_text.strip()
+    if not raw_text:
+        raw_text = "No audio text input captured from doctor mic streams."
 
-    import json
-    items_list = template.required_items
-    if isinstance(items_list, str):
-        try:
-            items_list = json.loads(items_list)
-        except Exception:
-            items_list = [items_list]
-
-    # Forwards your chosen model name out directly to drive dual routing logic layers
-    ai_raw_output = ai_service.process_clinical_audio(
-        db=db,
-        raw_text=simulated_transcript,
-        required_keys=list(items_list),
-        d_desc=template.default_description or "-",
-        d_med=template.default_medicine or "-",
-        model_name=model_name  # 👈 Pass variable value out cleanly
-    )
+    # 👇 Wrap this call to catch the Gemini API errors safely
+    try:
+        ai_raw_output = ai_service.process_clinical_audio(
+            db=db,
+            raw_text=raw_text,
+            required_keys=list(template.required_items),
+            d_desc=template.default_description or "-",
+            d_med=template.default_medicine or "-",
+            model_name=payload.model_name
+        )
+    except APIError as e:
+        # Handles 503 Overloaded, 403 Invalid Keys, etc.
+        status_code = e.code if e.code else 500
+        raise HTTPException(
+            status_code=status_code, 
+            detail=f"Gemini API Error: {e.message}"
+        )
+    except Exception as e:
+        # Catch-all for other unexpected issues (like JSON parsing errors)
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Inference pipeline failed: {str(e)}"
+        )
 
     extracted_desc = ai_raw_output.pop("description", "-")
     extracted_med = ai_raw_output.pop("medicine", "-")
 
-    # Embedded vectors are completely stripped out here - saving space and speed
     consultation = Consultation(
-        patient_id=patient_id,
-        template_id=template_id,
+        patient_id=payload.patient_id,
+        template_id=payload.template_id,
         status=ConsultationStatus.PENDING_REVIEW,
-        recorded_by_user_id=user_id,
-        raw_transcript=simulated_transcript,
+        recorded_by_user_id=payload.user_id,
+        raw_transcript=raw_text,
         extracted_structured_data=ai_raw_output,
         extracted_description=extracted_desc,
         extracted_medicine=extracted_med,
-        embedding=None  # 👈 Cleared out completely
+        embedding=None
     )
 
     db.add(consultation)
     db.commit()
     db.refresh(consultation)
-    
-    # Render raw JSON string output to completely shield Pydantic core serialization types
+
     json_str = json.dumps(consultation, cls=SafeJSONEncoder)
     return Response(content=json_str, media_type="application/json")
-
-
 @app.post("/api/sessions/{consultation_id}/review")
 def review_and_modify_consultation_data(
     consultation_id: int, payload: dict, db: Session = Depends(get_session)

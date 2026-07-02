@@ -64,6 +64,8 @@
 
         async function fetchRecordDetails() {
             try {
+                document.getElementById('consultationIdDisplay').innerText = consultationId;
+
                 const response = await fetch(`${BACKEND_URL}/api/sessions/${consultationId}`);
                 if (!response.ok) throw new Error("Target audit folder file missing.");
                 const data = await response.json();

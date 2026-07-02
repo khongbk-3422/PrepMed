@@ -156,19 +156,36 @@
             await sendTranscriptToBackend(finalTranscript.trim());
         });
 
+        // --- DISPATCH RAW PARSED TEXT TO BACKEND VIA SECURE JSON PAYLOAD ---
         async function sendTranscriptToBackend(textString) {
             recordStatus.innerText = "Analyzing text variables... Dispatching payload to active core pipeline.";
             
-            const patientId = document.getElementById('patientId').value;
-            const userId = document.getElementById('userId').value;
-            const templateId = templateSelect.value;
+            const patientId = parseInt(document.getElementById('patientId').value);
+            const userId = parseInt(document.getElementById('userId').value);
+            const templateId = parseInt(templateSelect.value);
             const chosenModel = modelSelect.value;
 
-            // standardizing query parameter target URL strings
-            const uploadUrl = `${BACKEND_URL}/api/sessions/process?patient_id=${patientId}&user_id=${userId}&template_id=${templateId}&model_name=${encodeURIComponent(chosenModel)}`;
+            // 1. FIXED: Clean, short base URL with no string parameters hanging off the end
+            const uploadUrl = `${BACKEND_URL}/api/sessions/process`;
+
+            // 2. FIXED: Construct a standard JavaScript object matching the backend schema
+            const jsonPayload = {
+                patient_id: patientId,
+                user_id: userId,
+                template_id: templateId,
+                model_name: chosenModel,
+                raw_text: textString // 👈 The long voice transcript safely tucked inside the body!
+            };
 
             try {
-                const response = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": "application/json" } });
+                const response = await fetch(uploadUrl, { 
+                    method: "POST", 
+                    headers: { 
+                        "Content-Type": "application/json" // Tells the server to expect JSON data
+                    },
+                    body: JSON.stringify(jsonPayload) // 👈 Converts object to a clean string
+                });
+                
                 if (!response.ok) throw new Error("Inference pipeline exception thrown.");
                 const data = await response.json();
                 

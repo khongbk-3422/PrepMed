@@ -1,49 +1,39 @@
-import os
-from sqlmodel import Session, create_engine, select
-# Added database module init_db import
-from database import init_db
-from models import User, UserRole, Consultation, ConsultationStatus
+import json
+from database import get_session
+from models import MedicalTemplate
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://prepmed:predmed12345@postgres-db:5432/prepmed"
-)
-
-engine = create_engine(DATABASE_URL)
-
-
-def seed_system_users_and_patients():
-    # 1. Force table creations to instantiate missing tables cleanly
-    print("⏳ Running database table schema initializations...")
-    init_db()
-
-    print("🚀 Seeding User roles and baseline testing channels...")
-    with Session(engine) as session:
-        if session.exec(select(User)).first():
-            print("✨ Accounts are already configured. Skipping seed sequence.")
-            return
-
-        doc = User(username="dr_ahmad", full_name="Dr. Ahmad Razak", role=UserRole.DOCTOR)
-        nurse = User(username="nurse_sarah", full_name="Nurse Sarah Connor", role=UserRole.NURSE)
-        
-        session.add(doc)
-        session.add(nurse)
-        session.commit()
-        session.refresh(doc)
-        
-        initial_case = Consultation(
-            patient_id=101,
-            recorded_by_user_id=doc.id,
-            status=ConsultationStatus.CONFIRMED,
-            raw_transcript="Patient presents with severe migration headaches and general fatigue.",
-            extracted_description="Migraine attack with structural fatigue clusters.",
-            extracted_medicine="Ibuprofen 400mg tabs as required",
-            embedding=[0.01] * 768 
+def seed_universal_template():
+    with next(get_session()) as db:
+        # Define a single, powerful template that works for any disease/complaint
+        universal_template = MedicalTemplate(
+            id=1,
+            title="Universal Clinical Intake Sheet",
+            # 👇 FIXED: Pass the raw Python list directly! Do not use json.dumps()
+            required_items=[
+                "chief_complaint",
+                "history_of_present_illness",
+                "observed_clinical_signs",
+                "suspected_conditions",
+                "immediate_plan_or_tests"
+            ],
+            default_description="Initial unstructured clinical evaluation notes.",
+            default_medicine="-",
+            created_by_user_id=1
         )
-        session.add(initial_case)
-        session.commit()
         
-        print("✅ Success! Users (Doctor/Nurse) and Initial Cases initialized seamlessly into PostgreSQL.")
-
+        existing = db.get(MedicalTemplate, universal_template.id)
+        if existing:
+            # Overwrite the old disease-specific template with our clean universal layout
+            existing.title = universal_template.title
+            existing.required_items = universal_template.required_items
+            existing.default_description = universal_template.default_description
+            existing.default_medicine = universal_template.default_medicine
+            db.add(existing)
+        else:
+            db.add(universal_template)
+            
+        db.commit()
+        print("🌱 Universal Intake Template deployed successfully into PostgreSQL!")
 
 if __name__ == "__main__":
-    seed_system_users_and_patients()
+    seed_universal_template()

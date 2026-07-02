@@ -33,6 +33,8 @@ services:
     # 👇 TELLS DOCKER TO INJECT THE PRIVATE ENVIRONMENT CONSTANTS
     env_file:
       - ./backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres-db:
         condition: service_healthy
