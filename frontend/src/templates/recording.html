@@ -229,10 +229,10 @@
                         
                         modelsData.ollama_models.forEach(m => {
                             const opt = document.createElement('option');
-                            opt.value = m;
+                            opt.value = `ollama-${m}`; // 👈 CHANGE THIS from m to `ollama-${m}`
                             opt.innerText = `Ollama - ${m}`;
                             if (m.startsWith("llama3.1")) {
-                                opt.selected = true; // Auto pick llama3.1 if found
+                                opt.selected = true;
                             }
                             group.appendChild(opt);
                         });

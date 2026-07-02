@@ -4,10 +4,8 @@ import requests
 
 def get_downloaded_models():
     """Fetches the list of text models downloaded in Ollama, allowing sufficient buffer for GPU initialization."""
-    base_url = os.getenv("OLLAMA_URL", "http://docker.internal")
-
-    if "11434" not in base_url or "docker.internal" in base_url:
-        base_url = "http://docker.internal"
+    base_url = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
+    base_url = base_url.rstrip("/")
 
     try:
         # 👇 FIXED: Increased timeout buffer threshold from 5 to 15 seconds!

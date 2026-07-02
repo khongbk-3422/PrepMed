@@ -45,8 +45,13 @@ def process_clinical_audio(db: Session, raw_text: str, required_keys: list[str],
         raw_json_str = response.text
 
     # 👇 PATH 2: ROUTE TO LOCAL OLLAMA MODULE RUNTIME
-    elif model_name.strip().lower().startswith("ollama-"):
-        actual_model = model_name.replace("ollama-", "", 1)
+    else:
+        # Handle both "ollama-llama3.1" and raw "llama3.1" string formats safely
+        if model_name.strip().lower().startswith("ollama-"):
+            actual_model = model_name.replace("ollama-", "", 1)
+        else:
+            actual_model = model_name.strip()
+            
         print(f"💻 Local GPU Inference Active: Routing payload straight to Ollama ({actual_model})")
         
         # Ensure url points to the generation endpoint
@@ -66,9 +71,6 @@ def process_clinical_audio(db: Session, raw_text: str, required_keys: list[str],
                 print(f"⚠️ Ollama Service returned Warning Code {response.status_code}: {response.text}")
         except Exception as e:
             print(f"⚠️ Local Ollama Network Transaction Failed: {e}")
-            
-    else:
-        print("⚠️ Error: Unknown model routing.")
 
     # ⭐ Parse output string and apply CRITICAL SAFETY NET
     if raw_json_str:

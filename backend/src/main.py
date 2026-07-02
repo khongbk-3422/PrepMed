@@ -131,6 +131,9 @@ async def register_and_process_voice_session(
     extracted_desc = ai_raw_output.pop("description", "-")
     extracted_med = ai_raw_output.pop("medicine", "-")
 
+    if isinstance(extracted_med, (list, dict)):
+        extracted_med = json.dumps(extracted_med)
+
     consultation = Consultation(
         patient_id=payload.patient_id,
         template_id=payload.template_id,
