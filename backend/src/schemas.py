@@ -25,3 +25,11 @@ class ConsultationAdjustmentRequest(BaseModel):
     extracted_description: str
     extracted_medicine: str
     mark_confirmed: bool = False
+
+#add patient create schema
+class PatientCreate(BaseModel):
+    full_name: str
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    current_sickness: Optional[str] = None
+    current_medications: Optional[str] = None

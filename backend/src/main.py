@@ -1,11 +1,15 @@
 import json  # 1. FIXED: Moved to the very top to satisfy Ruff E402
 from fastapi import Depends, FastAPI, HTTPException, Response  
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session, select
 from datetime import datetime
+
+from sqlmodel import Session, select
 import numpy as np
+
 from src.database import get_session, init_db
-from src.models import Consultation, ConsultationStatus, MedicalTemplate, User
+from src.models import Consultation, ConsultationStatus, MedicalTemplate, User, Patient
+from src.schemas import PatientCreate, UserCreate, TemplateCreate
+
 from src.services import ai_service
 from src.services.gemini_service import get_gemini_models
 from src.services.ollama_service import get_downloaded_models
@@ -71,15 +75,58 @@ def list_all_consultation_sessions(db: Session = Depends(get_session)):
     return clean_records
 
 
-# --- GENERAL USER & TEMPLATE PATH ROUTERS ---
+# --- GENERAL USER PATH ROUTERS ---
 @app.get("/api/users", response_model=list[User])
 def list_system_users(db: Session = Depends(get_session)):
     return db.exec(select(User)).all()
 
+@app.post("/api/users", response_model=User)
+def create_user(payload: UserCreate, db: Session = Depends(get_session)):
+    existing_user = db.exec(
+        select(User).where(User.username == payload.username)
+    ).first()
+
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    user = User(
+        username=payload.username,
+        full_name=payload.full_name,
+        role=payload.role,
+    )
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return user
+
+# --- GENERAL TEMPLATE PATH ROUTERS ---
 
 @app.get("/api/templates", response_model=list[MedicalTemplate])
 def list_available_templates(db: Session = Depends(get_session)):
     return db.exec(select(MedicalTemplate)).all()
+
+@app.post("/api/templates", response_model=MedicalTemplate)
+def create_template(payload: TemplateCreate, db: Session = Depends(get_session)):
+    user = db.get(User, payload.user_id)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    template = MedicalTemplate(
+        title=payload.title,
+        required_items=payload.required_items,
+        default_description=payload.default_description,
+        default_medicine=payload.default_medicine,
+        created_by_user_id=payload.user_id,
+    )
+
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+
+    return template
 
 
 # --- MEDICAL RECORDING VOICE PROCESSING API LOOP ---
@@ -88,18 +135,35 @@ async def register_and_process_voice_session(
     patient_id: int = 101,
     user_id: int = 1,
     template_id: int = 1,
-    model_name: str = "llama3.1",  # 👈 Added dynamic model parameter from frontend select picker
+    model_name: str = "llama3.1",
+    transcript: str = "",
     db: Session = Depends(get_session)
 ):
-    """Processes speech transcript directly using the user's chosen text model without background embedding overheads."""
+    """Processes transcript text using the user's chosen text model."""
+
+    patient = db.get(Patient, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
     template = db.get(MedicalTemplate, template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Selected layout template missing")
 
-    # Simulated speech-to-text text conversation string footprint layer
-    simulated_transcript = "Patient has a persistent chest cough with a mild fever for 3 days."
+    raw_transcript = transcript.strip()
 
-    import json
+    if not raw_transcript:
+        raise HTTPException(status_code=400, detail="Transcript cannot be empty")
+
+    if len(raw_transcript.split()) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Transcript is too short. Please record or enter more details.",
+        )
+
     items_list = template.required_items
     if isinstance(items_list, str):
         try:
@@ -107,40 +171,36 @@ async def register_and_process_voice_session(
         except Exception:
             items_list = [items_list]
 
-    # Forwards your chosen model name out directly to drive dual routing logic layers
     ai_raw_output = ai_service.process_clinical_audio(
         db=db,
-        raw_text=simulated_transcript,
+        raw_text=raw_transcript,
         required_keys=list(items_list),
         d_desc=template.default_description or "-",
         d_med=template.default_medicine or "-",
-        model_name=model_name  # 👈 Pass variable value out cleanly
+        model_name=model_name,
     )
 
     extracted_desc = ai_raw_output.pop("description", "-")
     extracted_med = ai_raw_output.pop("medicine", "-")
 
-    # Embedded vectors are completely stripped out here - saving space and speed
     consultation = Consultation(
         patient_id=patient_id,
         template_id=template_id,
         status=ConsultationStatus.PENDING_REVIEW,
         recorded_by_user_id=user_id,
-        raw_transcript=simulated_transcript,
+        raw_transcript=raw_transcript,
         extracted_structured_data=ai_raw_output,
         extracted_description=extracted_desc,
         extracted_medicine=extracted_med,
-        embedding=None  # 👈 Cleared out completely
+        embedding=None,
     )
 
     db.add(consultation)
     db.commit()
     db.refresh(consultation)
-    
-    # Render raw JSON string output to completely shield Pydantic core serialization types
+
     json_str = json.dumps(consultation, cls=SafeJSONEncoder)
     return Response(content=json_str, media_type="application/json")
-
 
 @app.post("/api/sessions/{consultation_id}/review")
 def review_and_modify_consultation_data(
@@ -185,3 +245,32 @@ def fetch_consultation_historical_record(
             status_code=404, detail="Consultation data profile absent"
         )
     return consultation
+
+# --- GENERAL PATIENT PATH ROUTERS ---
+@app.get("/api/patients", response_model=list[Patient])
+def list_patients(db: Session = Depends(get_session)):
+    return db.exec(select(Patient)).all()
+
+@app.post("/api/patients", response_model=Patient)
+def create_patient(payload: PatientCreate, db: Session = Depends(get_session)):
+    patient = Patient(
+        full_name=payload.full_name,
+        age=payload.age,
+        gender=payload.gender,
+        current_sickness=payload.current_sickness,
+    )
+
+    db.add(patient)
+    db.commit()
+    db.refresh(patient)
+
+    return patient
+
+@app.get("/api/patients/{patient_id}", response_model=Patient)
+def get_patient(patient_id: int, db: Session = Depends(get_session)):
+    patient = db.get(Patient, patient_id)
+
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    return patient
