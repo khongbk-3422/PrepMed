@@ -26,5 +26,4 @@ models/
 
 # --- Environment Configurations & Keys ---
 .env
-.env.*
 !*.txt
