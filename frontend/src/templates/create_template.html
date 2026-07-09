@@ -15,23 +15,24 @@
         <form id="templateForm" class="create-form">
             <div class="form-group">
                 <label for="templateTitle">Template Title</label>
-                <input
-                    id="templateTitle"
-                    type="text"
-                    placeholder="Dengue Consultation"
-                    required
-                >
+                    <input
+                        id="templateTitle"
+                        type="text"
+                        placeholder="e.g. Standard Template, Follow-up Template"
+                    >
             </div>
 
             <div class="form-group">
                 <label for="requiredItems">Required Items</label>
-                <input
-                    id="requiredItems"
-                    type="text"
-                    placeholder="symptoms, duration, temperature, diagnosis"
-                    required
-                >
-                <small class="hint-text">Separate each item with a comma.</small>
+                    <input
+                        id="requiredItems"
+                        type="text"
+                        placeholder="e.g. symptoms, duration, temperature, diagnosis, medicine, advice"
+                    >
+
+                    <p class="helper-text">
+                        Enter the fields you want the AI to extract. Separate each item with a comma.
+                    </p>
             </div>
 
             <div class="form-group">

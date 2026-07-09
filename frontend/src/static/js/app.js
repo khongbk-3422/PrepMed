@@ -1,6 +1,12 @@
 // app.js
+
 import { getSessions, processSession, reviewSession } from "./api.js";
-import { pauseOrStopRecording, resetRecording, setupSpeechRecognition, startRecording} from "./speech.js";
+import {
+    pauseOrStopRecording,
+    resetRecording,
+    setupSpeechRecognition,
+    startRecording,
+} from "./speech.js";
 
 // HTML elements
 const el = {
@@ -29,6 +35,42 @@ const el = {
 
     sessionsList: document.getElementById("sessionsList"),
 };
+
+let isProcessing = false;
+let hasProcessed = false;
+
+// Button state
+function setRecordingButtons(state) {
+    if (state === "processing") {
+        el.startBtn.disabled = true;
+        el.pauseStopBtn.disabled = true;
+        el.resetBtn.disabled = true;
+        el.processBtn.disabled = true;
+        el.processBtn.textContent = "Processing...";
+        return;
+    }
+
+    if (state === "processed") {
+        el.startBtn.disabled = true;
+        el.pauseStopBtn.disabled = true;
+        el.resetBtn.disabled = false;
+        el.processBtn.disabled = true;
+        el.processBtn.textContent = "Processed";
+        return;
+    }
+
+    el.startBtn.disabled = false;
+    el.pauseStopBtn.disabled = false;
+    el.resetBtn.disabled = false;
+    el.processBtn.disabled = false;
+    el.processBtn.textContent = "Process";
+}
+
+function resetProcessState() {
+    isProcessing = false;
+    hasProcessed = false;
+    setRecordingButtons("ready");
+}
 
 // Small helpers
 function cleanFieldName(name) {
@@ -156,6 +198,9 @@ function showSession(session) {
     el.medicine.value = session.extracted_medicine || "-";
 
     setStatus(session.status || "Draft");
+
+    hasProcessed = true;
+    setRecordingButtons("processed");
 }
 
 function createHistoryItem(session) {
@@ -176,7 +221,9 @@ function createHistoryItem(session) {
         </button>
     `;
 
-    item.querySelector("button").addEventListener("click", () => showSession(session));
+    item.querySelector("button").addEventListener("click", () => {
+        showSession(session);
+    });
 
     return item;
 }
@@ -198,6 +245,8 @@ async function refreshHistory() {
 
 // Backend actions
 async function processTranscript() {
+    if (isProcessing || hasProcessed) return;
+
     const transcript = el.transcript.value.trim();
 
     if (!el.user.value) return alert("Please select a user.");
@@ -213,16 +262,22 @@ async function processTranscript() {
         transcript,
     };
 
-    el.processBtn.disabled = true;
+    isProcessing = true;
+    setRecordingButtons("processing");
 
     try {
         const session = await processSession(data);
+
         showSession(session);
         await refreshHistory();
+
+        hasProcessed = true;
+        setRecordingButtons("processed");
     } catch (error) {
         showError(error);
+        resetProcessState();
     } finally {
-        el.processBtn.disabled = false;
+        isProcessing = false;
     }
 }
 
@@ -257,7 +312,10 @@ async function saveReview() {
 
 // Events
 function setupEvents() {
-    el.template.addEventListener("change", updateNoteFromTemplate);
+    el.template.addEventListener("change", () => {
+        updateNoteFromTemplate();
+        resetProcessState();
+    });
 
     el.statusRadios.forEach((radio) => {
         radio.addEventListener("change", () => setStatus(getSelectedStatus()));
@@ -269,6 +327,7 @@ function setupEvents() {
     el.resetBtn.addEventListener("click", () => {
         resetRecording();
         updateNoteFromTemplate();
+        resetProcessState();
     });
 
     el.processBtn.addEventListener("click", processTranscript);
@@ -280,6 +339,7 @@ function startApp() {
     setupSpeechRecognition(el.transcript);
     setupEvents();
     updateNoteFromTemplate();
+    resetProcessState();
     refreshHistory();
 }
 
