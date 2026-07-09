@@ -8,7 +8,6 @@ import {
     startRecording,
 } from "./speech.js";
 
-// HTML elements
 const el = {
     user: document.getElementById("userSelect"),
     patient: document.getElementById("patientSelect"),
@@ -38,32 +37,28 @@ const el = {
 
 let isProcessing = false;
 let hasProcessed = false;
+let showAllHistory = false;
 
-// Button state
+const HISTORY_LIMIT = 5;
+
+/* Buttons */
+
 function setRecordingButtons(state) {
-    if (state === "processing") {
-        el.startBtn.disabled = true;
-        el.pauseStopBtn.disabled = true;
-        el.resetBtn.disabled = true;
-        el.processBtn.disabled = true;
+    const isBusy = state === "processing";
+    const isDone = state === "processed";
+
+    el.startBtn.disabled = isBusy || isDone;
+    el.pauseStopBtn.disabled = isBusy || isDone;
+    el.resetBtn.disabled = isBusy;
+    el.processBtn.disabled = isBusy || isDone;
+
+    if (isBusy) {
         el.processBtn.textContent = "Processing...";
-        return;
-    }
-
-    if (state === "processed") {
-        el.startBtn.disabled = true;
-        el.pauseStopBtn.disabled = true;
-        el.resetBtn.disabled = false;
-        el.processBtn.disabled = true;
+    } else if (isDone) {
         el.processBtn.textContent = "Processed";
-        return;
+    } else {
+        el.processBtn.textContent = "Process";
     }
-
-    el.startBtn.disabled = false;
-    el.pauseStopBtn.disabled = false;
-    el.resetBtn.disabled = false;
-    el.processBtn.disabled = false;
-    el.processBtn.textContent = "Process";
 }
 
 function resetProcessState() {
@@ -72,7 +67,8 @@ function resetProcessState() {
     setRecordingButtons("ready");
 }
 
-// Small helpers
+/* Helpers */
+
 function cleanFieldName(name) {
     return String(name).replace(/:$/, "").trim();
 }
@@ -83,24 +79,68 @@ function formatLabel(name) {
         .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function getSelectedStatus() {
-    return document.querySelector("input[name='consultationStatus']:checked")?.value || "Draft";
+function normalizeStatus(status) {
+    return status === "Confirmed" ? "Confirmed" : "Pending Review";
 }
 
-function setStatus(status) {
-    el.statusInput.value = status;
-
-    el.statusRadios.forEach((radio) => {
-        radio.checked = radio.value === status;
-    });
-
-    el.markConfirmed.checked = status === "Confirmed";
+function getStatusLabel(status) {
+    return normalizeStatus(status) === "Confirmed" ? "Completed" : "Pending Review";
 }
 
 function getStatusClass(status) {
-    if (status === "Confirmed") return "status-confirmed";
-    if (status === "Pending Review") return "status-pending";
-    return "status-draft";
+    return normalizeStatus(status) === "Confirmed"
+        ? "status-confirmed"
+        : "status-pending";
+}
+
+function getSelectedStatus() {
+    return document.querySelector("input[name='consultationStatus']:checked")?.value
+        || "Pending Review";
+}
+
+function setStatus(status) {
+    const cleanStatus = normalizeStatus(status);
+
+    el.statusInput.value = cleanStatus;
+
+    el.statusRadios.forEach((radio) => {
+        radio.checked = radio.value === cleanStatus;
+    });
+
+    el.markConfirmed.checked = cleanStatus === "Confirmed";
+}
+
+function formatSessionDateTime(createdAt) {
+    if (!createdAt) {
+        return { date: "No date", time: "" };
+    }
+
+    let value = String(createdAt);
+
+    if (!/[zZ]|[+-]\d{2}:\d{2}$/.test(value)) {
+        value = `${value}Z`;
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return {
+            date: String(createdAt).slice(0, 10),
+            time: "",
+        };
+    }
+
+    return {
+        date: date.toLocaleDateString("en-CA", {
+            timeZone: "Asia/Kuala_Lumpur",
+        }),
+        time: date.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+            timeZone: "Asia/Kuala_Lumpur",
+        }),
+    };
 }
 
 function showError(error) {
@@ -108,7 +148,8 @@ function showError(error) {
     alert(error.message || "Something went wrong.");
 }
 
-// Structured clinical fields
+/* Clinical fields */
+
 function renderStructuredFields(data) {
     el.structuredFields.innerHTML = "";
 
@@ -143,7 +184,8 @@ function syncStructuredData() {
     el.structuredData.value = JSON.stringify(data);
 }
 
-// Template handling
+/* Template */
+
 function getSelectedTemplate() {
     const option = el.template.options[el.template.selectedIndex];
 
@@ -179,14 +221,17 @@ function updateNoteFromTemplate() {
     });
 
     renderStructuredFields(fields);
+
     el.description.value = template.defaultDescription;
     el.medicine.value = template.defaultMedicine;
     el.currentId.value = "";
     el.resultTranscript.value = "";
-    setStatus("Draft");
+
+    setStatus("Pending Review");
 }
 
-// Session display + history
+/* Session + history */
+
 function showSession(session) {
     el.currentId.value = session.id || "";
     el.transcript.value = session.raw_transcript || "";
@@ -197,7 +242,7 @@ function showSession(session) {
     el.description.value = session.extracted_description || "-";
     el.medicine.value = session.extracted_medicine || "-";
 
-    setStatus(session.status || "Draft");
+    setStatus(session.status || "Pending Review");
 
     hasProcessed = true;
     setRecordingButtons("processed");
@@ -205,15 +250,18 @@ function showSession(session) {
 
 function createHistoryItem(session) {
     const item = document.createElement("div");
+    const dateTime = formatSessionDateTime(session.created_at);
+
     item.className = "history-item";
 
     item.innerHTML = `
-        <div class="history-date">
-            ${session.created_at ? session.created_at.slice(0, 10) : "No date"}
+        <div class="history-date-row">
+            <span class="history-date">${dateTime.date}</span>
+            <span class="history-time">${dateTime.time}</span>
         </div>
 
         <span class="status-badge ${getStatusClass(session.status)}">
-            ${session.status || "Draft"}
+            ${getStatusLabel(session.status)}
         </span>
 
         <button type="button" class="btn btn-light history-open-btn">
@@ -228,6 +276,23 @@ function createHistoryItem(session) {
     return item;
 }
 
+function createLoadMoreButton(totalSessions) {
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.className = "btn history-load-more";
+    button.textContent = showAllHistory
+        ? "Show Less"
+        : `Load More (${totalSessions - HISTORY_LIMIT})`;
+
+    button.addEventListener("click", () => {
+        showAllHistory = !showAllHistory;
+        refreshHistory();
+    });
+
+    return button;
+}
+
 async function refreshHistory() {
     const sessions = await getSessions();
 
@@ -238,12 +303,34 @@ async function refreshHistory() {
         return;
     }
 
-    sessions.forEach((session) => {
+    const visibleSessions = showAllHistory
+        ? sessions
+        : sessions.slice(0, HISTORY_LIMIT);
+
+    visibleSessions.forEach((session) => {
         el.sessionsList.appendChild(createHistoryItem(session));
+    });
+
+    if (sessions.length > HISTORY_LIMIT) {
+        el.sessionsList.appendChild(createLoadMoreButton(sessions.length));
+    }
+}
+
+/* Backend actions */
+
+async function autoSaveAsPendingReview(session) {
+    if (!session.id) return;
+
+    await reviewSession(session.id, {
+        user_id: Number(el.user.value),
+        extracted_structured_data: session.extracted_structured_data || {},
+        extracted_description: session.extracted_description || "-",
+        extracted_medicine: session.extracted_medicine || "-",
+        status: "Pending Review",
+        mark_confirmed: false,
     });
 }
 
-// Backend actions
 async function processTranscript() {
     if (isProcessing || hasProcessed) return;
 
@@ -268,7 +355,10 @@ async function processTranscript() {
     try {
         const session = await processSession(data);
 
+        session.status = "Pending Review";
+
         showSession(session);
+        await autoSaveAsPendingReview(session);
         await refreshHistory();
 
         hasProcessed = true;
@@ -302,15 +392,18 @@ async function saveReview() {
 
     try {
         const result = await reviewSession(el.currentId.value, data);
+
         setStatus(result.current_state || status);
         await refreshHistory();
+
         alert("Note saved.");
     } catch (error) {
         showError(error);
     }
 }
 
-// Events
+/* Events */
+
 function setupEvents() {
     el.template.addEventListener("change", () => {
         updateNoteFromTemplate();
@@ -334,7 +427,8 @@ function setupEvents() {
     el.saveBtn.addEventListener("click", saveReview);
 }
 
-// Start app
+/* Start */
+
 function startApp() {
     setupSpeechRecognition(el.transcript);
     setupEvents();

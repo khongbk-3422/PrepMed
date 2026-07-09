@@ -7,20 +7,26 @@
         <a href="/users/new" class="btn btn-light">Add User</a>
         <a href="/templates/new" class="btn btn-light">Add Template</a>
 
-        <div class="topbar-select">
-            <label for="userSelect" class="sr-only">Current User</label>
+        <div class="topbar-user">
+            <span class="user-avatar" aria-hidden="true">👤</span>
 
-            <select id="userSelect" name="userSelect">
-                {% if users %}
-                    {% for user in users %}
-                        <option value="{{ user.id }}">
-                            {{ user.full_name }} ({{ user.role }})
-                        </option>
-                    {% endfor %}
-                {% else %}
-                    <option value="">No users found</option>
-                {% endif %}
-            </select>
+            <div class="user-select-wrap">
+                <label for="userSelect" class="user-select-label">
+                    Current User
+                </label>
+
+                <select id="userSelect" name="userSelect" aria-label="Select current user">
+                    {% if users %}
+                        {% for user in users %}
+                            <option value="{{ user.id }}">
+                                {{ user.full_name }} ({{ user.role | string | replace('UserRole.', '') | lower }})
+                            </option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="">No users found</option>
+                    {% endif %}
+                </select>
+            </div>
         </div>
     </nav>
 </header>

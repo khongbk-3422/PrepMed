@@ -31,13 +31,18 @@ a {
 /* Top bar */
 
 .topbar {
-    height: 60px;
+    height: 70px;
     padding: 0 24px;
     background: var(--card);
     border-bottom: 1px solid var(--line);
+
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 20px;
+}
+
+.brand {
+    flex-shrink: 0;
 }
 
 .brand-link {
@@ -56,56 +61,84 @@ a {
     width: 28px;
     height: 28px;
     border-radius: 50%;
+    background: #eaf6f8;
+    color: var(--primary);
 
     display: inline-flex;
     align-items: center;
     justify-content: center;
 
-    background: #eaf6f8;
-    color: var(--primary);
     font-size: 22px;
     font-weight: 900;
 }
 
-.topbar-actions,
-.recording-actions,
-.form-actions,
-.status-options {
+.topbar-actions {
+    margin-left: auto;
+
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: nowrap;
 }
 
-.topbar-select {
+.topbar-user {
+    height: 44px;
+    padding: 5px 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+
     display: flex;
     align-items: center;
+    gap: 8px;
 }
 
-.topbar-select select {
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #eaf6f8;
+    color: var(--primary);
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.user-select-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.user-select-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--muted);
+    line-height: 1;
+}
+
+.topbar-user select {
     width: auto;
-    min-width: 180px;
-    height: 38px;
-    padding: 0 36px 0 12px;
-}
-
-/* Hide label visually but keep it accessible */
-
-.sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
+    min-width: 170px;
+    height: 22px;
     border: 0;
+    padding: 0 24px 0 0;
+    background: transparent;
+
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
 }
 
 /* Main layout */
 
 main {
-    height: calc(100vh - 60px);
+    height: calc(100vh - 70px);
 }
 
 .app-layout {
@@ -119,6 +152,12 @@ main {
     border-right: 1px solid var(--line);
     padding: 18px;
     overflow-y: auto;
+
+    scrollbar-width: none;
+}
+
+.sidebar::-webkit-scrollbar {
+    display: none;
 }
 
 .workspace {
@@ -269,13 +308,15 @@ button {
     white-space: nowrap;
 }
 
-.btn-primary {
+.btn-primary,
+.btn-process {
     background: var(--primary);
     color: #fff;
 }
 
 .btn-secondary,
-.btn-light {
+.btn-light,
+.btn-pause {
     background: var(--secondary);
     color: var(--text);
 }
@@ -283,6 +324,32 @@ button {
 .btn-danger {
     background: var(--danger);
     color: #fff;
+}
+
+.btn-start {
+    background: #0f8b8d;
+    color: #fff;
+}
+
+.btn-pause {
+    border: 1px solid var(--line);
+}
+
+button:disabled,
+.btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* Recording + status rows */
+
+.recording-actions,
+.form-actions,
+.status-options {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 /* Status */
@@ -297,11 +364,6 @@ button {
     padding: 7px 11px;
     font-size: 12px;
     font-weight: 700;
-}
-
-.status-draft {
-    background: #edf2f7;
-    color: #52677a;
 }
 
 .status-pending {
@@ -333,15 +395,34 @@ button {
     padding: 12px;
 }
 
-.history-date {
-    font-size: 13px;
-    font-weight: 700;
+.history-date-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
     margin-bottom: 8px;
 }
 
-.history-open-btn {
+.history-date {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.history-time {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.history-open-btn,
+.history-load-more {
     width: 100%;
     margin-top: 10px;
+}
+
+.history-load-more {
+    background: #f1f5f9;
+    color: var(--text);
 }
 
 /* Create pages */
@@ -372,7 +453,21 @@ button {
         gap: 12px;
     }
 
-    .topbar-actions,
+    .topbar-actions {
+        margin-left: 0;
+        justify-content: stretch;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .topbar-user {
+        width: 100%;
+    }
+
+    .topbar-user select {
+        width: 100%;
+    }
+
     .form-actions {
         flex-direction: column;
     }
@@ -392,10 +487,4 @@ button {
     .workspace {
         padding: 16px;
     }
-}
-
-button:disabled,
-.btn:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
 }
